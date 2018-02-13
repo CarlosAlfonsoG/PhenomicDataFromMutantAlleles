@@ -1,0 +1,106 @@
+---
+title: "Analisis cuantitativo de embriones mutantes de kayak"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+
+```
+
+
+```{r echo = FALSE}
+library(ggplot2)
+library(GGally)
+library(gridExtra)
+library(ggfortify)
+library(cluster)
+
+datos <- read.csv("Downloads/Datos_EmbrionesAll_alleleskau.xlsx - Sheet1.csv", sep = ",", header = T)
+datos.scale <- scale(datos[1:8])
+datos.scale <- as.data.frame(datos.scale)
+datos.scale$Allele <- datos$Alele
+datos.scale$Phenot <- datos$TYPE
+##grep results ## 
+result <- datos.scale[ grep("DC", datos.scale$Phenot) , ]
+result2 <- datos.scale[ grep("HI", datos.scale$Phenot) , ]
+set.seed(500)
+not_norm_cluster=kmeans(result[,1:8,],3)
+result$cluster=as.factor(not_norm_cluster$cluster)
+
+
+```
+
+
+
+## Resultados
+
+Los alelos de kayak previamente publicados de kayak, como kayak^1^ y kayak^2^ son letales embrionarios, con defectos de apertura dorsal, dado que el objetivo de este proyecto es identificar las lesiones moleculares en el locus de kayak que puedan estar afectando sus diferentes isoformas es importante cuantificar los fenotipos de una manera mas detallada. Por lo que nosotros cuantificamos los fenotipos cuticulares de embriones homocigotos mutantes para kayak^1^, kayak^2^ y dos alelos generados en nuestro laboratorio kayak^200^ y kayak^600^.   
+
+Como se muestra en la Figura 1. kayak^1^ es el alelo mutante que muestra mayor penetrancia dada su letalidad temprana, esto debido a estudios previos que han reportado a kayak^1^ como un alelo nulo, por otro lado kayak^200^ muestra la proporcion mas alta en letalidad con fenotipos de apertura dorsal. 
+
+![Proporciones de fenotipos en alelos mutantes de kayak](./Desktop/Fig.1 /Fig.1 .003.jpeg)
+
+Ademas de la determinacion de los fenotipos nos dimos a la tarea de estandarizar una herramienta morfometrica llamada EggTools que nos permitiera obtener otros parametros acerca de los embriones que no pudieran verse en una clasificacion cualitativa. El programa utiliza la parametros establecidos en cuantificaciones de otros huevos y la desviacion del elipse para determinar el area y el volumen al trazar puntos en la circunferencia del embrion(Figura 2.A).
+
+
+Los resultados obtenidos muestran diferencias significativas con respecto al control (T.student P value < 0.05) en el largo en el caso del alelo kayak^200 y del alelo kayak^2 en el volumen, demostrando que el programa es capaz de identificar diferencias entre los alelos mutantes y el control. 
+
+![Analisis cuantitavio de defectos embrionarios de alelos de kayak](./Desktop/Fig.1 /Fig.1.004.jpeg)
+
+## Analisis estaditico multidimensional. 
+
+Los resultados de Epitools son muy utiles para encontrar diferencias en varios parametros, sin embargo nosotros queremos obtener medidas que no son observables a simple vista por la clasificacion cualitativa, es decir si cada alelo aun con fenotipos iguales es capaz de tener caracteristicas diferentes cuantitativamente. Para ello utilizamos el algoritmo k-means de ``machine learning`` que funciona mediante un algoritmo de aprendizaje no supervisado. Utilizando varios tipos de datos estandarizados puede generar vectores multidimensionales de cada medida del embrion y clasificarlos de acuerdo a sus caracteristicas cuantitativas. 
+
+
+
+
+
+```{r echo =FALSE, fig.height = 3, fig.width = 5, fig.align = "center"}
+p <- ggplot(result, aes(x=Surface.Area, y=Volume,color=Allele)) +
+  geom_point() +  labs(title="
+                       
+                       Apertura Dorsal",
+       x="Area", y = "Volumen") + theme_void() 
+g <- ggplot(result2, aes(x=Surface.Area, y=Volume,color=Allele)) +
+  geom_point() +  labs(title="
+                       
+                       Involucion de la Cabeza",
+       x="Area", y = "Volumen") + theme_void() 
+grid.arrange(p, g, ncol=2)
+
+```
+
+
+
+
+
+Al utilizarse el algoritmo de k-means el programa puede estimar las diferencias cuantitativas mas significativas sin tener ninguna nocion previa a los fenotipos ni alelos. El programa identifica tres categorias de subtipos de fenotipos de cerrado Dorsal que se muestran en la siguiente figura con diferentes colores que son diferentes entre si significativamente.
+El analisis de K-means agrupa clusters basado en medidas similares en un plano multidimensional, en este caso los valores obtenidos por EggTools como Volumen, Area, Largo etc., Como puede verse mismos fenotipos son cuantitavamente diferentes en cada alelo mutante mientras que alelos como kayak^200^ y kayak^600^ forman clusters intermedios mientrs que kayak^1^ y kayak^2^ son antagonistas en el plano.
+
+
+
+
+```{r echo =FALSE, message= F, warning= F }
+g <- ggpairs(result,columns = 1:9,mapping=aes(colour=cluster),
+             upper = list(continuous = wrap("cor", size = 2.5, alignPercent = 1)))
+g + ggtitle("
+            
+            K-means Clustering kayak mutants")
+  
+
+```
+
+
+Ademas aplicar un analisis de componentes principales (que reduce todas las variables medidas a un solo plano dimensional) y pareado con clustering PAM centrado en medoides, es posible reconocer facilmente 3 grupos de variables que se distribuyen en el plano para cada alelo mutante, para como una representaci??n cuantitativa de todas sus variables. 
+
+```{r echo= F}
+datos2 <- read.csv("MyData.csv", header = T )
+autoplot(pam(datos2[-7], 3), frame = TRUE, frame.type = 'norm', title = "Analisis PCA en embriones mutantes con PAM clustering")
+```
+
+El uso de este analisis estadistico nos ha permitido identificar subclases de fenotipos que cualitativamente no son distinguibles facilmente, ademas prueba que el uso de herramientas cuantitativa para evaluar los fenotipos es una herramienta para poder reconocer diferencias. Como perspectivas, queda reconocer los datos que forman clusters y ver cada una de las fotografias, ademas de hacer experimentos de interacciones geneticas y ver como se localizan en el plano. 
+
+El codigo para realizar el analisis de machine learning de ``k-means`` y ``PCA`` estan disnibles en mi Github: este analisis y workflow es aplicable a cualquier resultado obtenido de EggTools por lo que puede ser de uso general para la comunidad. 
